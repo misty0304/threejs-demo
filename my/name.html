@@ -1,0 +1,184 @@
+<!--
+ * @Author: huhuan@moredian.com
+ * @Date: 2023-10-19 17:22:44
+ * @LastEditors: 胡奂 huhuan@moredian.com
+ * @LastEditTime: 2023-11-23 10:15:30
+ * @Description:
+-->
+<!DOCTYPE html>
+<html lang="zh-CN">
+	<head>
+		<meta charset="utf-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0"
+		/>
+		<title></title>
+		<style>
+			body {
+				margin: 0;
+				padding: 0;
+			}
+			#shuju {
+				color: #ffffff;
+				font-size: 16px;
+				position: absolute;
+				top: 0;
+				left: 0;
+			}
+			#tag {
+				color: #ffffff;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- <div id="shuju">1111112222</div> -->
+		<div id="app"></div>
+		<div id="tag">标签</div>
+	</body>
+	<script type="importmap">
+		{
+			"imports": {
+				"three": "../build/three.module.js",
+				"three/addons/": "../../examples/jsm/"
+			}
+		}
+	</script>
+	<script type="module">
+		import * as THREE from "three";
+		import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+		import {
+			CSS2DRenderer,
+			CSS2DObject,
+		} from "three/addons/renderers/CSS2DRenderer.js";
+		const _data = {
+			mesh08: "我是mesh08",
+		};
+
+		const scene = new THREE.Scene();
+		scene.background = new THREE.Color("grey");
+		const camera = new THREE.PerspectiveCamera(
+			30,
+			window.innerWidth / window.innerHeight,
+			1,
+			10000
+		);
+		const renderer = new THREE.WebGLRenderer();
+		renderer.setPixelRatio(window.devicePixelRatio);
+		renderer.setSize(window.innerWidth, window.innerHeight);
+		document.body.appendChild(renderer.domElement);
+		const css2Renderer = new CSS2DRenderer();
+		css2Renderer.setSize(window.innerWidth, window.innerHeight);
+
+		const ambient = new THREE.AmbientLight(0xffffff, 1);
+		scene.add(ambient);
+
+		const geometry = new THREE.BoxGeometry(100, 100, 100);
+		//纹理贴图加载器TextureLoader
+		const texLoader = new THREE.TextureLoader();
+		// .load()方法加载图像，返回一个纹理对象Texture
+		const texture = texLoader.load("./1.jpg");
+		//材质对象Material
+		const material = new THREE.MeshStandardMaterial({
+			color: 0x00ffff, //设置材质颜色
+			// shininess: 30, //高光部分的亮度，默认30
+			transparent: true, //开启透明
+			opacity: 0.5, //设置透明度
+			map: texture, //map表示材质的颜色贴图属性
+		});
+		let group = new THREE.Object3D();
+
+		group.position.set(0, 0, 0); //世界原点坐标
+
+		for (let i = 0; i < 10; i++) {
+			for (let j = 0; j < 10; j++) {
+				const mesh = new THREE.Mesh(geometry, material); //网格模型对象Mesh
+				// 在XOZ平面上分布
+				mesh.position.set(i * 200, 0, j * 200);
+				mesh.name = `mesh${i}${j}`;
+				group.add(mesh);
+				scene.add(group); //网格模型添加到场景中
+			}
+		}
+
+		group.position.set(-1000, 0, -1000);
+		//在原来相机位置基础上拉远，可以观察到更大的范围
+		camera.position.set(0, 1500, 0);
+		// camera.up = new THREE.Vector3(0, 1800, 1800);
+
+		function render() {
+			requestAnimationFrame(render);
+			camera.lookAt(0, 0, 0);
+			renderer.render(scene, camera);
+			css2Renderer.render(scene, camera);
+		}
+
+		new OrbitControls(camera, renderer.domElement);
+		render();
+
+		// 初始化射线辅助器
+		var raycaster = new THREE.Raycaster();
+
+		// 鼠标控制对象
+		var mouse = new THREE.Vector2();
+
+		// 监听鼠标的移动事件
+		document.addEventListener("mousemove", onDocumentMouseMove, false);
+
+		// 鼠标移动事件处理函数
+		function onDocumentMouseMove(event) {
+			console.log("move", 123);
+			// 得到鼠标相对于容器的坐标
+			mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+			mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+		}
+
+		// 绑定点击事件
+		document.addEventListener("click", onDocumentClick, false);
+
+		// 点击事件处理函数
+		function onDocumentClick(event) {
+			// 执行射线检测
+			raycaster.setFromCamera(mouse, camera);
+			var intersects = raycaster.intersectObjects(scene.children, true);
+
+			// 判断是否成功
+			if (intersects.length > 0) {
+				// 选取第一个物体并对其执行交互
+				var object = intersects[0].object;
+				tag(
+					object.position.x,
+					object.position.y,
+					object.position.z,
+					object.name
+				);
+			}
+		}
+
+		function tag(x, y, z, name) {
+			css2Renderer.domElement.style.position = "absolute";
+			css2Renderer.domElement.style.top = "0px";
+			css2Renderer.domElement.style.pointerEvents = "none";
+			document.body.appendChild(css2Renderer.domElement);
+			const div = document.createElement("div");
+			div.textContent = name;
+			// HTML元素转化为threejs的CSS2模型对象
+			const tag = new CSS2DObject(div);
+
+			tag.position.set(x, y, z);
+			group.add(tag);
+		}
+
+		// 画布跟随窗口变化
+		window.onresize = function () {
+			const width = window.innerWidth;
+			const height = window.innerHeight;
+			// cnavas画布宽高度重新设置
+			renderer.setSize(width, height);
+			// HTML标签css2Renderer.domElement尺寸重新设置
+			css2Renderer.setSize(width, height);
+			camera.aspect = width / height;
+			camera.updateProjectionMatrix();
+		};
+	</script>
+</html>
